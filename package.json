@@ -1,0 +1,26 @@
+{
+  "name": "tdarts-socket",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm run socket-server\" \"npm run next-server\"",
+    "socket-server": "node server.js",
+    "next-server": "node next-server.js",
+    "build": "next build",
+    "start": "concurrently \"npm run socket-server\" \"next start\"",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "socket.io": "^4.7.0",
+    "socket.io-client": "^4.7.0",
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0"
+  }
+}
