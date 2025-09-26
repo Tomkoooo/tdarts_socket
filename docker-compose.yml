@@ -1,0 +1,17 @@
+services:
+  web:
+    image: ghcr.io/tomkoooo/tdarts_socket:main
+    container_name: tdarts_socket
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    ports:
+      - "80:3000"
+      - "8080:8080"
+  watchtower:
+    image: containrrr/watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/snap/docker/2932/.docker/config.json:/config.json
+    command: --cleanup=true --interval 120 tdarts_socket
