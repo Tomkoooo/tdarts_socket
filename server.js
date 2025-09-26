@@ -1,9 +1,31 @@
 import { createServer } from "node:http";
 import { Server } from "socket.io";
 import express from "express";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+
+// Load environment variables from .env.local
+dotenv.config({ path: '.env.local' });
 
 const port = process.env.SOCKET_PORT || 8080;
 const hostname = "0.0.0.0"; // Allow external connections
+
+// Security configuration
+const JWT_SECRET = process.env.SOCKET_JWT_SECRET;
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://tdart.sironic.hu";
+const API_KEY = process.env.SOCKET_API_KEY;
+
+console.log(JWT_SECRET, API_KEY, ALLOWED_ORIGIN);
+
+if (!JWT_SECRET) {
+  console.error("❌ SOCKET_JWT_SECRET environment variable is required");
+  process.exit(1);
+}
+
+if (!API_KEY) {
+  console.error("❌ SOCKET_API_KEY environment variable is required");
+  process.exit(1);
+}
 
 // Match states storage
 const matchStates = new Map();
@@ -15,16 +37,71 @@ app.use(express.json());
 // Create HTTP server for Socket.IO and Express
 const httpServer = createServer(app);
 
-// Initialize Socket.IO
+// Initialize Socket.IO with strict CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: process.env.NEXT_PUBLIC_APP_URL || "*",
+    origin: ALLOWED_ORIGIN,
     methods: ["GET", "POST"],
+    credentials: true
   },
+  allowEIO3: true
 });
 
+// Authentication middleware for Socket.IO
+io.use((socket, next) => {
+  const token = socket.handshake.auth.token;
+  const origin = socket.handshake.headers.origin;
+  
+  // Check origin
+  if (origin !== ALLOWED_ORIGIN) {
+    console.log(`❌ Rejected connection from unauthorized origin: ${origin}`);
+    return next(new Error("Unauthorized origin"));
+  }
+  
+  // Check JWT token
+  if (!token) {
+    console.log("❌ No token provided");
+    return next(new Error("Authentication token required"));
+  }
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    socket.userId = decoded.userId;
+    socket.userRole = decoded.userRole;
+    console.log(`✅ Authenticated user: ${decoded.userId}`);
+    next();
+  } catch (err) {
+    console.log("❌ Invalid token:", err.message);
+    next(new Error("Invalid authentication token"));
+  }
+});
+
+// API Authentication middleware
+const authenticateAPI = (req, res, next) => {
+  const apiKey = req.headers['x-api-key'];
+  const origin = req.headers.origin;
+  
+  // Check origin
+  if (origin !== ALLOWED_ORIGIN) {
+    return res.status(403).json({ 
+      success: false, 
+      error: 'Unauthorized origin' 
+    });
+  }
+  
+  // Check API key
+  if (!apiKey || apiKey !== API_KEY) {
+    return res.status(401).json({ 
+      success: false, 
+      error: 'Invalid API key' 
+    });
+  }
+  
+  next();
+};
+
 // API Endpoints
-app.get('/api/socket', (req, res) => {
+app.get('/api/socket', authenticateAPI, (req, res) => {
   res.json({ 
     success: true, 
     message: 'Socket.IO endpoint ready',
@@ -32,7 +109,7 @@ app.get('/api/socket', (req, res) => {
   });
 });
 
-app.post('/api/socket', async (req, res) => {
+app.post('/api/socket', authenticateAPI, async (req, res) => {
   try {
     const { action, matchId } = req.body;
     

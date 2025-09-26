@@ -131,11 +131,27 @@ Response for live matches:
 
 ## Environment Variables
 
-- `SOCKET_PORT`: Port for the Socket.IO server (default: 8080)
-- `NEXT_PUBLIC_SOCKET_URL`: URL for clients to connect to Socket.IO server
-- `NEXT_PUBLIC_APP_URL`: URL of the Next.js application (for CORS)
-- `PORT`: Port for the Next.js server (default: 3000)
-- `NODE_ENV`: Environment mode (development/production)
+Create a `.env.local` file with the following variables:
+
+```env
+# Socket Server Configuration
+SOCKET_PORT=8080
+SOCKET_JWT_SECRET=your-super-secret-jwt-key-here
+SOCKET_API_KEY=your-api-key-here
+ALLOWED_ORIGIN=https://tdart.sironic.hu
+
+# Next.js Configuration
+PORT=3000
+NEXT_PUBLIC_SOCKET_URL=https://tdart.sironic.hu:8080
+NEXT_PUBLIC_APP_URL=https://tdart.sironic.hu
+```
+
+### Required Variables:
+- `SOCKET_JWT_SECRET`: JWT signing secret for token validation
+- `SOCKET_API_KEY`: API key for authentication
+- `ALLOWED_ORIGIN`: Allowed origin for CORS (your domain)
+- `SOCKET_PORT`: Port for Socket.IO server (default: 8080)
+- `PORT`: Port for Next.js server (default: 3000)
 
 ## Benefits of Separation
 
