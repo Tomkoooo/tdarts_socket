@@ -138,12 +138,12 @@ Create a `.env.local` file with the following variables:
 SOCKET_PORT=8080
 SOCKET_JWT_SECRET=your-super-secret-jwt-key-here
 SOCKET_API_KEY=your-api-key-here
-ALLOWED_ORIGIN=https://tdart.sironic.hu
+ALLOWED_ORIGIN=https://tdarts.sironic.hu
 
 # Next.js Configuration
 PORT=3000
-NEXT_PUBLIC_SOCKET_URL=https://tdart.sironic.hu:8080
-NEXT_PUBLIC_APP_URL=https://tdart.sironic.hu
+NEXT_PUBLIC_SOCKET_URL=https://tdarts.sironic.hu:8080
+NEXT_PUBLIC_APP_URL=https://tdarts.sironic.hu
 ```
 
 ### Required Variables:

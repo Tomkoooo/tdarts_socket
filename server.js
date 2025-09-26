@@ -12,7 +12,7 @@ const hostname = "0.0.0.0"; // Allow external connections
 
 // Security configuration
 const JWT_SECRET = process.env.SOCKET_JWT_SECRET;
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://tdart.sironic.hu";
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://tdarts.sironic.hu";
 const API_KEY = process.env.SOCKET_API_KEY;
 
 console.log(JWT_SECRET, API_KEY, ALLOWED_ORIGIN);
@@ -34,6 +34,33 @@ const matchStates = new Map();
 const app = express();
 app.use(express.json());
 
+// CORS middleware
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  console.log(`🌐 CORS request from origin: ${origin}, method: ${req.method}, path: ${req.path}`);
+  
+  // Allow requests from the allowed origin
+  if (origin === ALLOWED_ORIGIN) {
+    res.header('Access-Control-Allow-Origin', origin);
+    console.log(`✅ CORS allowed for origin: ${origin}`);
+  } else {
+    console.log(`❌ CORS blocked for origin: ${origin} (expected: ${ALLOWED_ORIGIN})`);
+  }
+  
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization, x-api-key');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    console.log(`🔄 Handling preflight request for ${req.path}`);
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
 // Create HTTP server for Socket.IO and Express
 const httpServer = createServer(app);
 
@@ -41,7 +68,8 @@ const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
     origin: ALLOWED_ORIGIN,
-    methods: ["GET", "POST"],
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization", "x-api-key"],
     credentials: true
   },
   allowEIO3: true
