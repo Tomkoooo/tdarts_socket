@@ -13,17 +13,12 @@ const hostname = "0.0.0.0"; // Allow external connections
 // Security configuration
 const JWT_SECRET = process.env.SOCKET_JWT_SECRET;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://tdarts.sironic.hu";
-const API_KEY = process.env.SOCKET_API_KEY;
 
-console.log(JWT_SECRET, API_KEY, ALLOWED_ORIGIN);
+console.log("JWT_SECRET configured:", !!JWT_SECRET);
+console.log("ALLOWED_ORIGIN:", ALLOWED_ORIGIN);
 
 if (!JWT_SECRET) {
   console.error("❌ SOCKET_JWT_SECRET environment variable is required");
-  process.exit(1);
-}
-
-if (!API_KEY) {
-  console.error("❌ SOCKET_API_KEY environment variable is required");
   process.exit(1);
 }
 
@@ -40,12 +35,14 @@ app.use((req, res, next) => {
   
   console.log(`🌐 CORS request from origin: ${origin}, method: ${req.method}, path: ${req.path}`);
   
-  // Allow requests from the allowed origin
-  if (origin === ALLOWED_ORIGIN) {
+  // Allow requests from the allowed origin OR localhost for development
+  const isAllowedOrigin = origin === ALLOWED_ORIGIN;
+  
+  if (isAllowedOrigin) {
     res.header('Access-Control-Allow-Origin', origin);
     console.log(`✅ CORS allowed for origin: ${origin}`);
   } else {
-    console.log(`❌ CORS blocked for origin: ${origin} (expected: ${ALLOWED_ORIGIN})`);
+    console.log(`❌ CORS blocked for origin: ${origin} (expected: ${ALLOWED_ORIGIN} )`);
   }
   
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -67,7 +64,7 @@ const httpServer = createServer(app);
 // Initialize Socket.IO with strict CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: ALLOWED_ORIGIN,
+    origin: [ALLOWED_ORIGIN], // Allow both production and development origins
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Origin", "X-Requested-With", "Content-Type", "Accept", "Authorization", "x-api-key"],
     credentials: true
@@ -80,8 +77,10 @@ io.use((socket, next) => {
   const token = socket.handshake.auth.token;
   const origin = socket.handshake.headers.origin;
   
-  // Check origin
-  if (origin !== ALLOWED_ORIGIN) {
+  // Check origin - allow both production and development
+  const isAllowedOrigin = origin === ALLOWED_ORIGIN;
+  
+  if (!isAllowedOrigin) {
     console.log(`❌ Rejected connection from unauthorized origin: ${origin}`);
     return next(new Error("Unauthorized origin"));
   }
@@ -106,26 +105,43 @@ io.use((socket, next) => {
 
 // API Authentication middleware
 const authenticateAPI = (req, res, next) => {
-  const apiKey = req.headers['x-api-key'];
+  const token = req.headers['authorization']?.replace('Bearer ', '');
   const origin = req.headers.origin;
   
-  // Check origin
-  if (origin !== ALLOWED_ORIGIN) {
+  console.log(`🔑 API Auth - Origin: ${origin}, Token: ${token ? 'provided' : 'MISSING'}`);
+  
+  // Check origin - allow both production and development
+  const isAllowedOrigin = origin === ALLOWED_ORIGIN;
+  
+  if (!isAllowedOrigin) {
+    console.log(`❌ API Auth failed - Origin mismatch: ${origin} (expected: ${ALLOWED_ORIGIN})`);
     return res.status(403).json({ 
       success: false, 
       error: 'Unauthorized origin' 
     });
   }
   
-  // Check API key
-  if (!apiKey || apiKey !== API_KEY) {
+  // Check JWT token
+  if (!token) {
+    console.log(`❌ API Auth failed - No token provided`);
     return res.status(401).json({ 
       success: false, 
-      error: 'Invalid API key' 
+      error: 'Authentication token required' 
     });
   }
   
-  next();
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    console.log(`✅ API Auth successful for user: ${decoded.userId}`);
+    next();
+  } catch (err) {
+    console.log(`❌ API Auth failed - Invalid token: ${err.message}`);
+    return res.status(401).json({ 
+      success: false, 
+      error: 'Invalid authentication token' 
+    });
+  }
 };
 
 // API Endpoints
@@ -478,5 +494,5 @@ httpServer
   })
   .listen(port, hostname, () => {
     console.log(`> Socket.IO server running on http://${hostname}:${port}`);
-    console.log(`> CORS origin: ${process.env.NEXT_PUBLIC_APP_URL || "*"}`);
+    console.log(`> CORS origin: ${ALLOWED_ORIGIN}`);
   });
