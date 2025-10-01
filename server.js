@@ -3,6 +3,7 @@ import { Server } from "socket.io";
 import express from "express";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import ServerMonitor from "./monitor-server.js";
 
 // Load environment variables from .env.local
 dotenv.config({ path: '.env.local' });
@@ -13,9 +14,11 @@ const hostname = "0.0.0.0"; // Allow external connections
 // Security configuration
 const JWT_SECRET = process.env.SOCKET_JWT_SECRET;
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://tdarts.sironic.hu";
+const ENABLE_MONITORING = process.env.ENABLE_MONITORING === 'true';
 
 console.log("JWT_SECRET configured:", !!JWT_SECRET);
 console.log("ALLOWED_ORIGIN:", ALLOWED_ORIGIN);
+console.log("MONITORING enabled:", ENABLE_MONITORING);
 
 if (!JWT_SECRET) {
   console.error("❌ SOCKET_JWT_SECRET environment variable is required");
@@ -24,6 +27,9 @@ if (!JWT_SECRET) {
 
 // Match states storage
 const matchStates = new Map();
+
+// Initialize server monitor if enabled
+const monitor = ENABLE_MONITORING ? new ServerMonitor('server-metrics.json') : null;
 
 // Create Express app
 const app = express();
@@ -194,6 +200,34 @@ app.post('/api/socket', authenticateAPI, async (req, res) => {
       });
     }
     
+    if (action === 'get-server-metrics') {
+      // Allow fetching server metrics if monitoring is enabled
+      if (!monitor) {
+        return res.json({
+          success: false,
+          error: 'Server monitoring is not enabled'
+        });
+      }
+      
+      // Force save current metrics
+      monitor.saveMetrics(true);
+      
+      // Read and return the metrics file
+      const fs = await import('fs');
+      try {
+        const metricsData = fs.default.readFileSync('server-metrics.json', 'utf-8');
+        return res.json({
+          success: true,
+          metrics: JSON.parse(metricsData)
+        });
+      } catch (err) {
+        return res.json({
+          success: false,
+          error: 'Metrics file not found or could not be read'
+        });
+      }
+    }
+    
     return res.status(400).json({ 
       success: false, 
       error: 'Invalid action' 
@@ -211,6 +245,7 @@ app.post('/api/socket', authenticateAPI, async (req, res) => {
 // Socket.IO event handlers
 io.on("connection", (socket) => {
   console.log("🔌 Client connected:", socket.id);
+  if (monitor) monitor.trackConnection();
 
   // Join tournament room
   socket.on("join-tournament", (tournamentCode) => {
@@ -306,6 +341,7 @@ io.on("connection", (socket) => {
 
   // Handle throw events
   socket.on("throw", (data) => {
+    if (monitor) monitor.trackMessageReceived();
     console.log(`🎯 Throw event for match ${data.matchId}:`, data);
     const state = updateMatchStateOnThrow(data.matchId, data);
     socket.to(`match-${data.matchId}`).emit("throw-update", data);
@@ -314,6 +350,7 @@ io.on("connection", (socket) => {
       matchId: data.matchId,
       state: state,
     });
+    if (monitor) monitor.trackMessageSent();
   });
 
   // Handle undo last throw
@@ -364,6 +401,7 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("🔌 Client disconnected:", socket.id);
+    if (monitor) monitor.trackDisconnection();
   });
 });
 
@@ -495,4 +533,22 @@ httpServer
   .listen(port, hostname, () => {
     console.log(`> Socket.IO server running on http://${hostname}:${port}`);
     console.log(`> CORS origin: ${ALLOWED_ORIGIN}`);
+    
+    // Start monitoring if enabled
+    if (monitor) {
+      monitor.start(1000, io);
+      console.log(`> Server monitoring enabled (metrics will be saved to server-metrics.json)`);
+    }
   });
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n\n🛑 Shutting down server...');
+  if (monitor) {
+    monitor.stop();
+  }
+  httpServer.close(() => {
+    console.log('✅ Server stopped.');
+    process.exit(0);
+  });
+});

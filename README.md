@@ -159,3 +159,66 @@ NEXT_PUBLIC_APP_URL=https://tdarts.sironic.hu
 2. **Better Resource Management**: Each server can be optimized for its specific purpose
 3. **Easier Deployment**: Can deploy Socket.IO server to different infrastructure
 4. **Clear Separation of Concerns**: Real-time logic is isolated from web serving logic
+
+## 🧪 Stressz Teszt
+
+A projekt tartalmaz egy átfogó stressz teszt eszközt a Socket.IO szerver teljesítményének mérésére.
+
+### Gyors Start
+
+1. **Szerver indítása monitoring-gal:**
+```bash
+# .env.local fájlban:
+ENABLE_MONITORING=true
+
+npm run socket-server
+```
+
+2. **Stressz teszt futtatása:**
+```bash
+npm run stress-test
+```
+
+3. **Eredmények vizualizálása:**
+```bash
+npm run visualize
+```
+
+**Fontos**: A metrikák automatikusan mentésre kerülnek:
+- `client-metrics.json` - A teszt befejezésekor
+- `server-metrics.json` - 30 másodpercenként + szerver leállításkor
+
+### Mit Mér?
+
+- ⏱️ **Válaszidők**: Min, max, átlag, P50, P95, P99 percentilisek
+- 💻 **CPU használat**: User és system idő
+- 🧠 **Memória használat**: Heap és RSS
+- 📊 **Socket.IO metrikák**: Kliensek, szobák, üzenetek, hibák
+
+### Progresszív Terhelés
+
+A teszt automatikusan növeli a terhelést:
+- **5-300 aktív meccs** (játékosok párokkal)
+- **10-1000 néző** (passzív megfigyelők)
+- **Valósághű, folyamatos terhelés**:
+  - Meccsek eltolt indítással (0-5mp késleltetés)
+  - Random dobási intervallumok (7-12mp meccsenkent)
+  - Egyszerre több meccs is küld → valódi stressz!
+- 10 másodperc/terhelési szint
+
+### Részletes Dokumentáció
+
+- **[STRESS_TEST.md](./STRESS_TEST.md)** - Teljes dokumentáció:
+  - Konfiguráció beállítások
+  - Szerveroldali monitoring
+  - HTML vizualizáció
+  - Hibaelhárítás
+  - Teljesítmény értékelés
+
+- **[REMOTE_TEST.md](./REMOTE_TEST.md)** - Távoli szerver tesztelés:
+  - Hogyan teszteld a termelési szervert
+  - Automatikus metrika letöltés
+  - Biztonság és konfiguráció
+  - SSH és deployment tippek
+
+- **[QUICK_START_STRESS_TEST.md](./QUICK_START_STRESS_TEST.md)** - Gyors kezdés 3 lépésben

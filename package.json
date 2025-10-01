@@ -8,7 +8,9 @@
     "next-server": "node next-server.js",
     "build": "next build",
     "start": "concurrently \"npm run socket-server\" \"next start\"",
-    "lint": "next lint"
+    "lint": "next lint",
+    "stress-test": "node stress-test.js",
+    "visualize": "node visualize-metrics.js"
   },
   "dependencies": {
     "next": "^14.0.0",

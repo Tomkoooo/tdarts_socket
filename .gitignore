@@ -50,3 +50,8 @@ coverage/
 *.zip.sha256
 *.zip.sha256.txt
 *.zip.sha256.txt.sha256
+
+# Stress test outputs
+server-metrics.json
+client-metrics.json
+metrics-report.html
