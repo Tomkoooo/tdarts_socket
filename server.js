@@ -200,34 +200,6 @@ app.post('/api/socket', authenticateAPI, async (req, res) => {
       });
     }
     
-    if (action === 'get-server-metrics') {
-      // Allow fetching server metrics if monitoring is enabled
-      if (!monitor) {
-        return res.json({
-          success: false,
-          error: 'Server monitoring is not enabled'
-        });
-      }
-      
-      // Force save current metrics
-      monitor.saveMetrics(true);
-      
-      // Read and return the metrics file
-      const fs = await import('fs');
-      try {
-        const metricsData = fs.default.readFileSync('server-metrics.json', 'utf-8');
-        return res.json({
-          success: true,
-          metrics: JSON.parse(metricsData)
-        });
-      } catch (err) {
-        return res.json({
-          success: false,
-          error: 'Metrics file not found or could not be read'
-        });
-      }
-    }
-    
     return res.status(400).json({ 
       success: false, 
       error: 'Invalid action' 
@@ -235,6 +207,48 @@ app.post('/api/socket', authenticateAPI, async (req, res) => {
     
   } catch (error) {
     console.error('Socket API error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      error: error.message || 'Internal server error' 
+    });
+  }
+});
+
+// Dedikált metrics endpoint
+app.get('/api/metrics', authenticateAPI, async (req, res) => {
+  try {
+    // Check if monitoring is enabled
+    if (!monitor) {
+      return res.status(503).json({
+        success: false,
+        error: 'Server monitoring is not enabled. Set ENABLE_MONITORING=true in .env.local'
+      });
+    }
+    
+    // Force save current metrics
+    monitor.saveMetrics(true);
+    
+    // Read and return the metrics file
+    const fs = await import('fs');
+    try {
+      const metricsData = fs.default.readFileSync('server-metrics.json', 'utf-8');
+      const metrics = JSON.parse(metricsData);
+      
+      console.log(`📊 Metrics downloaded by ${req.user?.userId || 'unknown'}`);
+      
+      return res.json({
+        success: true,
+        metrics: metrics
+      });
+    } catch (err) {
+      console.error('Error reading metrics file:', err);
+      return res.status(500).json({
+        success: false,
+        error: 'Metrics file not found or could not be read'
+      });
+    }
+  } catch (error) {
+    console.error('Metrics API error:', error);
     return res.status(500).json({ 
       success: false, 
       error: error.message || 'Internal server error' 

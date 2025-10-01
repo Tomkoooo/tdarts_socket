@@ -115,9 +115,15 @@ class ServerMonitor {
 
   start(intervalMs = 1000, io = null, autoSaveIntervalSeconds = 30) {
     console.log('📊 Server monitoring started...');
+    console.log(`   Metrikák automatikus mentése: minden ${autoSaveIntervalSeconds}mp`);
+    console.log(`   Mentés helye: ${this.outputFile}`);
+    
+    // Első mentés rögtön az induláskor
+    this.captureMetrics(io);
+    this.saveMetrics(true);
     
     let captureCount = 0;
-    const autoSaveInterval = autoSaveIntervalSeconds * 1000 / intervalMs;
+    const autoSaveInterval = Math.floor(autoSaveIntervalSeconds * 1000 / intervalMs);
     
     this.interval = setInterval(() => {
       const metric = this.captureMetrics(io);
@@ -127,6 +133,7 @@ class ServerMonitor {
       // Automatikusan mentsd el a metrikákat időközönként
       if (captureCount % autoSaveInterval === 0) {
         this.saveMetrics(true); // true = intermediate save
+        console.log(`   💾 Metrikák automatikusan mentve (${captureCount} mérés)`);
       }
     }, intervalMs);
   }

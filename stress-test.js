@@ -23,13 +23,20 @@ import fs from "fs";
 dotenv.config({ path: '.env.local' });
 
 const JWT_SECRET = process.env.SOCKET_JWT_SECRET;
-const SOCKET_URL = process.env.SOCKET_URL || "http://localhost:8080";
+const SOCKET_URL = process.env.SOCKET_URL
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://tdarts.sironic.hu";
 
 if (!JWT_SECRET) {
   console.error("❌ SOCKET_JWT_SECRET environment variable is required");
   process.exit(1);
 }
+
+if (!SOCKET_URL) {
+  console.error("❌ SOCKET_URL environment variable is required");
+  process.exit(1);
+}
+
+console.log("SOCKET_URL:", SOCKET_URL);
 
 // Test configuration
 const CONFIG = {
@@ -463,31 +470,35 @@ class StressTest {
 
   async downloadServerMetrics() {
     try {
+      console.log(`   🔗 Csatlakozás: ${SOCKET_URL}/api/metrics`);
       const token = createTestToken('stress-test-admin', 'admin');
-      const response = await fetch(`${SOCKET_URL}/api/socket`, {
-        method: 'POST',
+      
+      const response = await fetch(`${SOCKET_URL}/api/metrics`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
           'Origin': ALLOWED_ORIGIN,
-        },
-        body: JSON.stringify({
-          action: 'get-server-metrics'
-        })
+        }
       });
 
+      console.log(`   📡 HTTP Status: ${response.status} ${response.statusText}`);
+      
       const data = await response.json();
+      console.log(`   📦 Response success: ${data.success}`);
       
       if (data.success && data.metrics) {
         fs.writeFileSync('server-metrics.json', JSON.stringify(data.metrics, null, 2));
         console.log('   ✅ Szerver metrikák letöltve: server-metrics.json');
+        console.log(`   📊 Metrikák száma: ${data.metrics.metrics?.length || 0}`);
         return data.metrics;
       } else {
         console.log(`   ⚠️  Szerver metrikák nem elérhetők: ${data.error || 'Unknown error'}`);
+        console.log(`   💡 Ellenőrizd a szerveren: ENABLE_MONITORING=true`);
         return null;
       }
     } catch (error) {
-      console.log(`   ⚠️  Szerver metrikák letöltése sikertelen: ${error.message}`);
+      console.log(`   ❌ Szerver metrikák letöltése sikertelen: ${error.message}`);
+      console.log(`   💡 Ellenőrizd hogy a szerver fut-e: ${SOCKET_URL}`);
       return null;
     }
   }

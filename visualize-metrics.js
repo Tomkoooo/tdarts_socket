@@ -406,39 +406,55 @@ try {
     process.exit(1);
   }
   
-  // Use server metrics as primary, fallback to client
-  const metricsData = serverMetrics || {
-    startTime: Date.parse(clientMetrics.timestamp),
-    endTime: Date.parse(clientMetrics.timestamp),
-    duration: clientMetrics.testResults.duration,
-    systemInfo: {
-      cpuCount: 0,
-      cpuModel: 'Unknown',
-      loadAverage: { '1min': 0, '5min': 0, '15min': 0 }
-    },
-    metrics: clientMetrics.cpuSnapshots.map((cpu, i) => ({
-      timestamp: Date.parse(clientMetrics.timestamp),
-      elapsed: cpu.time / 1000,
-      cpu: { total: 0, user: 0, system: 0 },
-      memory: clientMetrics.memorySnapshots[i] || {},
-      socketio: {
-        connectedClients: 0,
-        activeRooms: 0,
+  // Use server metrics as primary, fallback to client-based data
+  let metricsData;
+  
+  if (serverMetrics) {
+    metricsData = serverMetrics;
+  } else if (clientMetrics) {
+    // Create fallback structure from client metrics
+    const startTime = Date.parse(clientMetrics.timestamp);
+    metricsData = {
+      startTime: startTime,
+      endTime: startTime + (parseFloat(clientMetrics.testResults.duration) * 1000),
+      duration: clientMetrics.testResults.duration,
+      systemInfo: {
+        cpuCount: 0,
+        cpuModel: 'Client Machine (server metrics unavailable)',
+        loadAverage: { '1min': 0, '5min': 0, '15min': 0 },
+        platform: 'unknown',
+        arch: 'unknown'
+      },
+      metrics: (clientMetrics.cpuSnapshots || []).map((cpu, i) => ({
+        timestamp: startTime + (cpu.time || i * 1000),
+        elapsed: ((cpu.time || i * 1000) / 1000).toFixed(2),
+        cpu: { total: 0, user: 0, system: 0 },
+        memory: clientMetrics.memorySnapshots?.[i] || {
+          process: { heapUsed: 0, heapTotal: 0, external: 0, rss: 0, arrayBuffers: 0 },
+          system: { total: 0, free: 0, used: 0, usedPercent: 0 }
+        },
+        socketio: {
+          connectedClients: 0,
+          activeRooms: 0,
+          connections: 0,
+          disconnections: 0,
+          messagesReceived: 0,
+          messagesSent: 0,
+          errors: 0
+        }
+      })),
+      socketMetrics: {
         connections: 0,
         disconnections: 0,
         messagesReceived: 0,
         messagesSent: 0,
         errors: 0
       }
-    })),
-    socketMetrics: {
-      connections: 0,
-      disconnections: 0,
-      messagesReceived: 0,
-      messagesSent: 0,
-      errors: 0
-    }
-  };
+    };
+  } else {
+    console.error('❌ Nincs elérhető metrika adat!');
+    process.exit(1);
+  }
   
   // Add client metrics info if available
   if (clientMetrics) {
@@ -447,10 +463,27 @@ try {
   }
   
   console.log(`📈 HTML generálása...`);
+  
+  if (!serverMetrics) {
+    console.log(`\n⚠️  Figyelem: Csak kliens metrikák érhetők el!`);
+    console.log(`   A szerver metrikák hiányoznak - ellenőrizd:`);
+    console.log(`   1. ENABLE_MONITORING=true van beállítva a szerveren?`);
+    console.log(`   2. A szerver fut és elérhető?`);
+    console.log(`   3. A .env.local fájl helyes?\n`);
+  }
+  
   const html = generateHTML(metricsData);
   
   fs.writeFileSync(outputFile, html);
   console.log(`✅ HTML jelentés elkészült: ${outputFile}`);
+  
+  if (serverMetrics) {
+    console.log(`   📊 Szerver metrikák: ${serverMetrics.metrics?.length || 0} mérés`);
+  }
+  if (clientMetrics) {
+    console.log(`   📊 Kliens metrikák: ${clientMetrics.allLatencies?.length || 0} latency mérés`);
+  }
+  
   console.log(`\n🌐 Nyisd meg böngészőben: file://${path.resolve(outputFile)}`);
   
 } catch (error) {

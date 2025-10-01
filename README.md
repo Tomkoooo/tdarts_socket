@@ -222,3 +222,9 @@ A teszt automatikusan növeli a terhelést:
   - SSH és deployment tippek
 
 - **[QUICK_START_STRESS_TEST.md](./QUICK_START_STRESS_TEST.md)** - Gyors kezdés 3 lépésben
+
+- **[TROUBLESHOOTING.md](./TROUBLESHOOTING.md)** - Hibaelhárítás:
+  - Metrikák nem jönnek le?
+  - Szerver nem érhető el?
+  - Debug tippek
+  - Ellenőrző lista

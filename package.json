@@ -10,7 +10,8 @@
     "start": "concurrently \"npm run socket-server\" \"next start\"",
     "lint": "next lint",
     "stress-test": "node stress-test.js",
-    "visualize": "node visualize-metrics.js"
+    "visualize": "node visualize-metrics.js",
+    "test-metrics": "node test-metrics-download.js"
   },
   "dependencies": {
     "next": "^14.0.0",

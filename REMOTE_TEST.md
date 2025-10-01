@@ -130,9 +130,10 @@ start metrics-report.html  # Windows
 
 ### API Authentikáció
 
-A szerver metrikák letöltése JWT tokennel védett:
+A szerver metrikák egy dedikált `/api/metrics` endpointon érhetők el, JWT tokennel védve:
 
 ```javascript
+// Endpoint: GET /api/metrics
 // A stressz teszt automatikusan JWT tokent generál
 const token = jwt.sign({ 
   userId: 'stress-test-admin', 
@@ -142,6 +143,8 @@ const token = jwt.sign({
 // És elküldi a kérésben
 Authorization: Bearer <token>
 ```
+
+**Fontos:** Ez egy külön endpoint, nem zavarja a `/api/socket` GET endpointot, amit a Next.js projekt használ!
 
 ### CORS Védelem
 
